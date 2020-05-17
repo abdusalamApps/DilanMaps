@@ -120,4 +120,11 @@ public class Data {
             );
         }
     }
+
+    public void printMarked() {
+        for (Place place : marked) {
+            System.out.println("Name: " + place.getName() +
+                    ", Category: " + place.getCategory().getName());
+        }
+    }
 }
