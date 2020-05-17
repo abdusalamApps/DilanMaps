@@ -64,9 +64,11 @@ public class Data {
     public void remove() {
         for (Place place : marked) {
             places.entrySet().removeIf(
-                    entry -> marked.contains(entry.getValue())
+                    entry -> place.getName().
+                            equalsIgnoreCase(entry.getValue().getName())
             );
         }
+        marked.clear();
     }
 
     // Looks for a place at the given coordinates
