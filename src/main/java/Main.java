@@ -49,6 +49,21 @@ public class Main  extends Application {
         Button coordinatesButton = new Button("Coordinates");
 
         TextField textField = new TextField();
+
+        searchButton.setOnAction(e -> {
+            data.search(textField.getText().trim());
+            System.out.println("-------------Marked---------------");
+            data.printMarked();
+        });
+
+        hideButton.setOnAction(e -> {
+            data.hide();
+            System.out.println("-------------Hidden--------------");
+            data.printHidden();
+            System.out.println("-------------Marked---------------");
+            data.printMarked();
+        });
+
         topContainer.getChildren().addAll(newButton, radioBox(), textField,
                 searchButton, removeButton, hideButton, coordinatesButton);
 
@@ -68,6 +83,7 @@ public class Main  extends Application {
             chooser.setTitle("Choose Places File");
             File file = chooser.showOpenDialog(primaryStage);
             loadPlaces(file);
+            data.printPlaces();
         });
 
         fileMenu.getItems().addAll(loadMap, loadPlaces, save, exit);
