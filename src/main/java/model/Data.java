@@ -127,4 +127,11 @@ public class Data {
                     ", Category: " + place.getCategory().getName());
         }
     }
+
+    public void printHidden() {
+        for (Place place : hidden) {
+            System.out.println("Name: " + place.getName() +
+                    ", Category: " + place.getCategory().getName());
+        }
+    }
 }
