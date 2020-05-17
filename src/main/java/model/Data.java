@@ -111,4 +111,13 @@ public class Data {
             }
         }
     }
+
+    public void printPlaces() {
+        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+            System.out.println(
+                    "Position " + entry.getKey().x + ", " + entry.getKey().y +
+                            "|| Place " + entry.getValue().getName() + ", " + entry.getValue().getCategory().getName()
+            );
+        }
+    }
 }
