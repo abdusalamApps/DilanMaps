@@ -72,10 +72,13 @@ public class Data {
     }
 
     // Looks for a place at the given coordinates
-    public void placeByCoordinates(int x, int y) {
+    public String placeByCoordinates(int x, int y) {
         if (places.containsKey(new Position(x, y))) {
-            marked.add(places.get(new Position(x, y)));
+            Place place = places.get(new Position(x, y));
+            marked.add(place);
+            return place.getName();
         }
+        return null;
     }
 
     public void add(int x, int y, String name, String categoryName) {
