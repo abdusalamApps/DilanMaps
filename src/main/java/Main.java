@@ -6,27 +6,38 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import model.Data;
+
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main  extends Application {
 
+    private Stage primaryStage;
+    private Data data;
+
     @Override
     public void start(Stage primaryStage) throws Exception {
+        this.primaryStage = primaryStage;
+        this.data = new Data();
+
         VBox mainContainer = new VBox();
 
-        mainContainer.getChildren().addAll(getTopContainer(), getBottomContainer());
+        mainContainer.getChildren().addAll(menuBar(), topContainer(), bottomContainer());
 
         Scene scene = new Scene(mainContainer, 1100, 800);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    private HBox getTopContainer() {
+    private HBox topContainer() {
         HBox topContainer = new HBox();
         topContainer.setPadding(new Insets(14, 16, 14, 16));
         topContainer.setSpacing(12);
@@ -38,13 +49,58 @@ public class Main  extends Application {
         Button coordinatesButton = new Button("Coordinates");
 
         TextField textField = new TextField();
-        topContainer.getChildren().addAll(newButton, getRadioBox(), textField,
+        topContainer.getChildren().addAll(newButton, radioBox(), textField,
                 searchButton, removeButton, hideButton, coordinatesButton);
 
         return topContainer;
     }
 
-    private VBox getRadioBox() {
+    private MenuBar menuBar() {
+        MenuBar menuBar = new MenuBar();
+        Menu fileMenu = new Menu("File");
+        MenuItem loadMap = new MenuItem("Load Map");
+        MenuItem loadPlaces = new MenuItem("Load Places");
+        MenuItem save = new MenuItem("Save");
+        MenuItem exit = new MenuItem("Exit");
+
+        loadPlaces.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Choose Places File");
+            File file = chooser.showOpenDialog(primaryStage);
+            loadPlaces(file);
+        });
+
+        fileMenu.getItems().addAll(loadMap, loadPlaces, save, exit);
+        menuBar.getMenus().add(fileMenu);
+        return menuBar;
+    }
+
+    private void loadPlaces(File file) {
+        try {
+            Scanner scanner = new Scanner(file);
+            while (scanner.hasNext()) {
+                String line = scanner.nextLine();
+                String[] array = line.split(",");
+                String type = array[0];
+                String categoryName = array[1];
+                int x = Integer.parseInt(array[2]);
+                int y = Integer.parseInt(array[3]);
+                String name = array[4];
+                if (type.equalsIgnoreCase("described")) {
+                    String description = array[5];
+                    // Add Described place
+                    data.add(x, y, name, description, categoryName);
+                } else {
+                    // Add a named place
+                    data.add(x, y, name, categoryName);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private VBox radioBox() {
         RadioButton namedRadio = new RadioButton("Named"); // Skapa 2 av den här och lägga dem i vbox
         RadioButton described = new RadioButton("Described"); // Skapa 2 av den här och lägga dem i vbox
         VBox radioBox = new VBox();
@@ -57,7 +113,7 @@ public class Main  extends Application {
         return radioBox;
     }
 
-    private HBox getBottomContainer() {
+    private HBox bottomContainer() {
         HBox bottomContainer = new HBox();
         StackPane mapStack = new StackPane();
         ImageView imageView = new ImageView();
@@ -71,11 +127,11 @@ public class Main  extends Application {
 
 
         mapStack.getChildren().addAll(imageView);
-        bottomContainer.getChildren().addAll(mapStack, getRightPanel());
+        bottomContainer.getChildren().addAll(mapStack, rightPanel());
         return bottomContainer;
     }
 
-    private VBox getRightPanel() {
+    private VBox rightPanel() {
         VBox rightPanel = new VBox();
         Label categoriesLabel = new Label("Categories");
 
