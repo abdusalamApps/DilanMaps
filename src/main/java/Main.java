@@ -64,6 +64,17 @@ public class Main  extends Application {
             data.printMarked();
         });
 
+        removeButton.setOnAction(e -> {
+            data.remove();
+            System.out.println("-------------All Places--------------");
+            data.printPlaces();
+            System.out.println("-------------Hidden--------------");
+            data.printHidden();
+            System.out.println("-------------Marked---------------");
+            data.printMarked();
+
+        });
+
         topContainer.getChildren().addAll(newButton, radioBox(), textField,
                 searchButton, removeButton, hideButton, coordinatesButton);
 
@@ -83,6 +94,7 @@ public class Main  extends Application {
             chooser.setTitle("Choose Places File");
             File file = chooser.showOpenDialog(primaryStage);
             loadPlaces(file);
+            System.out.println("-------------All Places--------------");
             data.printPlaces();
         });
 
