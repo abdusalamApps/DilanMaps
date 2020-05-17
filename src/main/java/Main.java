@@ -10,10 +10,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import model.Data;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -22,6 +19,7 @@ public class Main  extends Application {
 
     private Stage primaryStage;
     private Data data;
+    private ImageView imageView;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -89,6 +87,18 @@ public class Main  extends Application {
         MenuItem save = new MenuItem("Save");
         MenuItem exit = new MenuItem("Exit");
 
+        loadMap.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Choose a Map");
+            File file = chooser.showOpenDialog(primaryStage);
+            try {
+                FileInputStream inputStream = new FileInputStream(file);
+                imageView.setImage(new Image(inputStream));
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+        });
+
         loadPlaces.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Choose Places File");
@@ -144,7 +154,7 @@ public class Main  extends Application {
     private HBox bottomContainer() {
         HBox bottomContainer = new HBox();
         StackPane mapStack = new StackPane();
-        ImageView imageView = new ImageView();
+        imageView = new ImageView();
 
         try {
             InputStream inputStream = new FileInputStream("C:/AwesomeMaps/exempelkarta.png");
