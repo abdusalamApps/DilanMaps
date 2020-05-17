@@ -9,13 +9,14 @@ import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import model.Data;
+import model.places.Place;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-public class Main  extends Application {
+public class Main extends Application {
 
     private Stage primaryStage;
     private Data data;
@@ -71,6 +72,52 @@ public class Main  extends Application {
             System.out.println("-------------Marked---------------");
             data.printMarked();
 
+        });
+
+        coordinatesButton.setOnAction(e -> {
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setTitle("Input Coordinates");
+
+            VBox mainBox = new VBox();
+            mainBox.setSpacing(12);
+            HBox xBox = new HBox();
+            HBox yBox = new HBox();
+
+            Label xLabel = new Label("X     ");
+            TextField xField = new TextField();
+            xBox.getChildren().addAll(xLabel, xField);
+
+            Label yLabel = new Label("Y     ");
+            TextField yField = new TextField();
+            yBox.getChildren().addAll(yLabel, yField);
+
+            ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+            ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+            dialog.setResultConverter(buttonType -> {
+                if (buttonType.equals(okType)) {
+                    String place = data.placeByCoordinates(
+                            Integer.parseInt(xField.getText().trim()),
+                            Integer.parseInt(yField.getText().trim())
+                    );
+                    if (place == null) {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setContentText("Place Not Found!");
+                        alert.show();
+                    } else {
+                        // Mark the place
+                        data.mark(place);
+                        System.out.println("-------------Marked---------------");
+                        data.printMarked();
+                    }
+                }
+                return null;
+            });
+
+            mainBox.getChildren().addAll(xBox, yBox);
+            dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
+            dialog.getDialogPane().setContent(mainBox);
+            dialog.show();
         });
 
         topContainer.getChildren().addAll(newButton, radioBox(), textField,
