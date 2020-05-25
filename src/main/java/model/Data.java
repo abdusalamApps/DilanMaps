@@ -119,14 +119,21 @@ public class Data {
     }
 
     public boolean isMarked(int x, int y) {
-        boolean isMarked = false;
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (entry.getKey().x == x && entry.getKey().y == y) {
-
-            }
-        }
-        return isMarked;
+        return marked.containsKey(new Position(x, y));
     }
+
+    public boolean isMarked(double x, double y) {
+        return marked.containsKey(new Position((int) x, (int) y));
+    }
+
+    public boolean isHidden(int x, int y) {
+        return hidden.containsKey(new Position(x, y));
+    }
+
+    public boolean isHidden(double x, double y) {
+        return hidden.containsKey(new Position((int) x, (int) y));
+    }
+
     public void printPlaces() {
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
             System.out.println(
@@ -186,5 +193,9 @@ public class Data {
 
     public void setChanged(boolean changed) {
         this.changed = changed;
+    }
+
+    public void unMark(int x, int y) {
+        marked.remove(new Position(x, y));
     }
 }
