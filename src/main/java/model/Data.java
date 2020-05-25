@@ -1,6 +1,5 @@
 package model;
 
-import javafx.geometry.Pos;
 import model.categories.BusCategory;
 import model.categories.Category;
 import model.categories.TrainCategory;
@@ -14,9 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class Data {
-    Map<Position, Place> places;
-    Set<Place> marked;
-    Set<Place> hidden;
+    private Map<Position, Place> places;
+    private Set<Place> marked;
+    private Set<Place> hidden;
     boolean changed;
 
     public Data() {
@@ -138,5 +137,37 @@ public class Data {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
+    }
+
+    public Map<Position, Place> getPlaces() {
+        return places;
+    }
+
+    public void setPlaces(Map<Position, Place> places) {
+        this.places = places;
+    }
+
+    public Set<Place> getMarked() {
+        return marked;
+    }
+
+    public void setMarked(Set<Place> marked) {
+        this.marked = marked;
+    }
+
+    public Set<Place> getHidden() {
+        return hidden;
+    }
+
+    public void setHidden(Set<Place> hidden) {
+        this.hidden = hidden;
+    }
+
+    public boolean isChanged() {
+        return changed;
+    }
+
+    public void setChanged(boolean changed) {
+        this.changed = changed;
     }
 }
