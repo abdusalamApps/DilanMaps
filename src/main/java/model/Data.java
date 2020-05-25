@@ -14,14 +14,14 @@ import java.util.Set;
 
 public class Data {
     private Map<Position, Place> places;
-    private Set<Place> marked;
-    private Set<Place> hidden;
+    private Map<Position, Place> marked;
+    private Map<Position, Place> hidden;
     boolean changed;
 
     public Data() {
         places = new HashMap<>();
-        marked = new HashSet<>();
-        hidden = new HashSet<>();
+        marked = new HashMap<>();
+        hidden = new HashMap<>();
         changed = false;
     }
 
@@ -29,42 +29,44 @@ public class Data {
     public void search(String place) {
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
             if (place.equalsIgnoreCase(entry.getValue().getName())) {
-                marked.add(entry.getValue());
+                marked.put(entry.getKey(), entry.getValue());
             }
         }
     }
 
     // Hides all marked places
     public void hide() {
-        hidden.addAll(marked);
+        for (Map.Entry<Position, Place> entry : marked.entrySet()) {
+            hidden.put(entry.getKey(), entry.getValue());
+        }
         marked.clear();
     }
 
     // Hide all places of a certain category
     public void hideCategory(String category) {
-        for (Place place : places.values()) {
-            if (category.equalsIgnoreCase(place.getCategory().getName())) {
-                hidden.add(place);
-                marked.remove(place);
+        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+            if (category.equalsIgnoreCase(entry.getValue().getCategory().getName())) {
+                hidden.put(entry.getKey(), entry.getValue());
+                marked.remove(entry.getKey());
             }
         }
     }
 
     // Show hidden category
     public void showCategory(String category) {
-        for (Place place : places.values()) {
-            if (category.equalsIgnoreCase(place.getCategory().getName())) {
-                hidden.remove(place);
+        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+            if (category.equalsIgnoreCase(entry.getValue().getCategory().getName())) {
+                hidden.remove(entry.getKey());
             }
         }
     }
 
     // Removes all marked places
     public void remove() {
-        for (Place place : marked) {
+        for (Map.Entry<Position, Place> entry : marked.entrySet()) {
             places.entrySet().removeIf(
-                    entry -> place.getName().
-                            equalsIgnoreCase(entry.getValue().getName())
+                    e -> e.getKey().x == entry.getKey().x
+                    && e.getKey().y == entry.getKey().y
             );
         }
         marked.clear();
@@ -74,7 +76,7 @@ public class Data {
     public String placeByCoordinates(int x, int y) {
         if (places.containsKey(new Position(x, y))) {
             Place place = places.get(new Position(x, y));
-            marked.add(place);
+            marked.put(new Position(x, y), place);
             return place.getName();
         }
         return null;
@@ -108,15 +110,23 @@ public class Data {
         }
     }
 
-    public void mark(int x, int y, String name) {
+    public void mark(int x, int y) {
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (name.equalsIgnoreCase(entry.getValue().getName())
-            && entry.getKey().x == x && entry.getKey().y == y) {
-                marked.add(entry.getValue());
+            if (entry.getKey().x == x && entry.getKey().y == y) {
+                marked.put(entry.getKey(), entry.getValue());
             }
         }
     }
 
+    public boolean isMarked(int x, int y) {
+        boolean isMarked = false;
+        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+            if (entry.getKey().x == x && entry.getKey().y == y) {
+
+            }
+        }
+        return isMarked;
+    }
     public void printPlaces() {
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
             System.out.println(
@@ -127,14 +137,14 @@ public class Data {
     }
 
     public void printMarked() {
-        for (Place place : marked) {
+        for (Place place : marked.values()) {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
     }
 
     public void printHidden() {
-        for (Place place : hidden) {
+        for (Place place : hidden.values()) {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
@@ -154,19 +164,19 @@ public class Data {
         this.places = places;
     }
 
-    public Set<Place> getMarked() {
+    public Map<Position, Place> getMarked() {
         return marked;
     }
 
-    public void setMarked(Set<Place> marked) {
+    public void setMarked(Map<Position, Place> marked) {
         this.marked = marked;
     }
 
-    public Set<Place> getHidden() {
+    public Map<Position, Place> getHidden() {
         return hidden;
     }
 
-    public void setHidden(Set<Place> hidden) {
+    public void setHidden(Map<Position, Place> hidden) {
         this.hidden = hidden;
     }
 
