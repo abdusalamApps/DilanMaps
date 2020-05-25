@@ -108,10 +108,11 @@ public class Data {
         }
     }
 
-    public void mark(String name) {
-        for (Place place : places.values()) {
-            if (name.equalsIgnoreCase(place.getName())) {
-                marked.add(place);
+    public void mark(int x, int y, String name) {
+        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+            if (name.equalsIgnoreCase(entry.getValue().getName())
+            && entry.getKey().x == x && entry.getKey().y == y) {
+                marked.add(entry.getValue());
             }
         }
     }
@@ -137,6 +138,12 @@ public class Data {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
+    }
+
+    public void clear() {
+        places.clear();
+        marked.clear();
+        hidden.clear();
     }
 
     public Map<Position, Place> getPlaces() {
