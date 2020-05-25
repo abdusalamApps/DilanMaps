@@ -6,21 +6,24 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Polyline;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import model.Data;
+import model.Position;
+import model.categories.Category;
 import model.places.Place;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class Main extends Application {
 
     private Stage primaryStage;
     private Data data;
     private ImageView imageView;
+    StackPane mapPane;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -28,6 +31,7 @@ public class Main extends Application {
         this.data = new Data();
 
         VBox mainContainer = new VBox();
+        mapPane = new StackPane();
 
         mainContainer.getChildren().addAll(menuBar(), topContainer(), bottomContainer());
 
@@ -46,13 +50,14 @@ public class Main extends Application {
         Button removeButton = new Button("Remove");
         Button hideButton = new Button("Hide");
         Button coordinatesButton = new Button("Coordinates");
-
         TextField textField = new TextField();
+
 
         searchButton.setOnAction(e -> {
             data.search(textField.getText().trim());
             System.out.println("-------------Marked---------------");
             data.printMarked();
+            refreshMap(data.getPlaces());
         });
 
         hideButton.setOnAction(e -> {
@@ -61,6 +66,7 @@ public class Main extends Application {
             data.printHidden();
             System.out.println("-------------Marked---------------");
             data.printMarked();
+            refreshMap(data.getPlaces());
         });
 
         removeButton.setOnAction(e -> {
@@ -71,6 +77,7 @@ public class Main extends Application {
             data.printHidden();
             System.out.println("-------------Marked---------------");
             data.printMarked();
+            refreshMap(data.getPlaces());
 
         });
 
@@ -96,19 +103,19 @@ public class Main extends Application {
 
             dialog.setResultConverter(buttonType -> {
                 if (buttonType.equals(okType)) {
-                    String place = data.placeByCoordinates(
-                            Integer.parseInt(xField.getText().trim()),
-                            Integer.parseInt(yField.getText().trim())
-                    );
+                    int x = Integer.parseInt(xField.getText().trim());
+                    int y = Integer.parseInt(yField.getText().trim());
+                    String place = data.placeByCoordinates(x, y);
                     if (place == null) {
                         Alert alert = new Alert(Alert.AlertType.WARNING);
                         alert.setContentText("Place Not Found!");
                         alert.show();
                     } else {
                         // Mark the place
-                        data.mark(place);
+                        data.mark(x, y, place);
                         System.out.println("-------------Marked---------------");
                         data.printMarked();
+                        refreshMap(data.getPlaces());
                     }
                 }
                 return null;
@@ -153,6 +160,9 @@ public class Main extends Application {
             loadPlaces(file);
             System.out.println("-------------All Places--------------");
             data.printPlaces();
+            System.out.println("-------------Marked---------------");
+            data.printMarked();
+
         });
 
         fileMenu.getItems().addAll(loadMap, loadPlaces, save, exit);
@@ -161,6 +171,8 @@ public class Main extends Application {
     }
 
     private void loadPlaces(File file) {
+        data.clear();
+
         try {
             Scanner scanner = new Scanner(file);
             while (scanner.hasNext()) {
@@ -180,6 +192,7 @@ public class Main extends Application {
                     data.add(x, y, name, categoryName);
                 }
             }
+            refreshMap(data.getPlaces());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
@@ -200,7 +213,7 @@ public class Main extends Application {
 
     private HBox bottomContainer() {
         HBox bottomContainer = new HBox();
-        StackPane mapStack = new StackPane();
+        mapPane = new StackPane();
         imageView = new ImageView();
 
         try {
@@ -211,10 +224,46 @@ public class Main extends Application {
         }
 
 
-        mapStack.getChildren().addAll(imageView);
-        bottomContainer.getChildren().addAll(mapStack, rightPanel());
+        mapPane.getChildren().addAll(imageView);
+        refreshMap(data.getPlaces());
+        bottomContainer.getChildren().addAll(mapPane, rightPanel());
         return bottomContainer;
     }
+
+
+    private void refreshMap(Map<Position, Place> placeMap) {
+        mapPane.getChildren().clear();
+        mapPane.getChildren().add(imageView);
+
+        for (Map.Entry<Position, Place> entry : placeMap.entrySet()) {
+            double x = entry.getKey().x;
+            double y = entry.getKey().y;
+
+            Polyline polyline = new Polyline();
+            polyline.setManaged(false);
+
+            polyline.getPoints().addAll(
+                    x - 10, y - 10,
+                    x + 10, y - 10,
+                    x, y,
+                    x - 10, y - 10
+            );
+
+            Category category = entry.getValue().getCategory();
+
+            if (data.getMarked().contains(entry.getValue())) {
+                polyline.setFill(Color.YELLOW);
+            } else {
+                polyline.setFill(category.getColor());
+            }
+
+            if (!data.getHidden().contains(entry.getValue())) {
+                mapPane.getChildren().add(polyline);
+            }
+
+        }
+    }
+
 
     private VBox rightPanel() {
         VBox rightPanel = new VBox();
@@ -231,6 +280,15 @@ public class Main extends Application {
         rightPanel.setSpacing(12);
         rightPanel.setPadding(new Insets(14, 16, 14, 16));
 
+        categoriesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            data.showCategory(obs.getValue());
+            refreshMap(data.getPlaces());
+        });
+
+        hideCatButton.setOnAction(e -> {
+            data.hideCategory(categoriesListView.getSelectionModel().getSelectedItem());
+            refreshMap(data.getPlaces());
+        });
         rightPanel.getChildren().addAll(categoriesLabel, categoriesListView, hideCatButton);
 
         return rightPanel;
