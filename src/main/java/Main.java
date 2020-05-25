@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
@@ -13,6 +14,7 @@ import javafx.stage.Stage;
 import model.Data;
 import model.Position;
 import model.categories.Category;
+import model.places.DescribedPlace;
 import model.places.Place;
 
 import java.io.*;
@@ -112,7 +114,7 @@ public class Main extends Application {
                         alert.show();
                     } else {
                         // Mark the place
-                        data.mark(x, y, place);
+                        data.mark(x, y);
                         System.out.println("-------------Marked---------------");
                         data.printMarked();
                         refreshMap(data.getPlaces());
@@ -223,6 +225,42 @@ public class Main extends Application {
             e.printStackTrace();
         }
 
+        mapPane.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
+                    int x = entry.getKey().x;
+                    int y = entry.getKey().y;
+                    if (Math.abs(x - e.getX()) < 7 && Math.abs(y - e.getY()) < 7) {
+                        if (data.isMarked(x, y)) {
+                            data.unMark(x, y);
+                        } else {
+                            data.mark(x, y);
+                        }
+                        refreshMap(data.getPlaces());
+                    }
+                }
+            } else if (e.getButton() == MouseButton.SECONDARY) {
+                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
+                    int x = entry.getKey().x;
+                    int y = entry.getKey().y;
+                    if (Math.abs(x - e.getX()) < 7 && Math.abs(y - e.getY()) < 7) {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        Place place = entry.getValue();
+                        if (place.getClass().equals(DescribedPlace.class)) {
+                            DescribedPlace describedPlace = (DescribedPlace) place;
+                            alert.setContentText("Name: " + place.getName()
+                                    + " [" + x + ", " + y + "]\n" +
+                                    "Description: " + describedPlace.getDescription());
+                        } else {
+                            alert.setContentText("Name: " + place.getName()
+                                    + " [" + x + ", " + y + "]");
+                        }
+                        alert.show();
+                    }
+                }
+
+            }
+        });
 
         mapPane.getChildren().addAll(imageView);
         refreshMap(data.getPlaces());
@@ -251,13 +289,13 @@ public class Main extends Application {
 
             Category category = entry.getValue().getCategory();
 
-            if (data.getMarked().contains(entry.getValue())) {
+            if (data.isMarked(x, y)) {
                 polyline.setFill(Color.YELLOW);
             } else {
                 polyline.setFill(category.getColor());
             }
 
-            if (!data.getHidden().contains(entry.getValue())) {
+            if (!data.isHidden(x, y)) {
                 mapPane.getChildren().add(polyline);
             }
 
