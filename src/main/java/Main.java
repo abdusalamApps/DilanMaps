@@ -52,8 +52,38 @@ public class Main extends Application {
 
         mainContainer.getChildren().addAll(menuBar(), topContainer(), bottomContainer());
         scene = new Scene(mainContainer, 1100, 800);
+        exitingBehavior(primaryStage);
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    private void exitingBehavior(Stage stage) {
+        stage.setOnCloseRequest(event -> {
+           if (data.isChanged()) {
+               Dialog<String> dialog = new Dialog<>();
+               HBox hBox = new HBox();
+               Label messageLabel = new Label("There are Unsaved Changes!");
+               hBox.getChildren().addAll(messageLabel);
+
+               ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+               ButtonType exitType = new ButtonType("Exit", ButtonBar.ButtonData.OK_DONE);
+               dialog.setResultConverter(buttonType -> {
+                   if (buttonType.equals(exitType)) {
+                       System.exit(0);
+                   }
+                   return null;
+               });
+
+               dialog.getDialogPane().getButtonTypes().addAll(cancelType, exitType);
+               dialog.getDialogPane().setContent(hBox);
+               dialog.show();
+
+               event.consume();
+           } else {
+               System.exit(0);
+           }
+
+        });
     }
 
     private HBox topContainer() {
@@ -206,7 +236,9 @@ public class Main extends Application {
 
         dialog.setResultConverter(buttonType -> {
             if (buttonType.equals(okType)) {
-                data.add((int) x, (int) y, field.getText().trim(), newPlaceCategory);
+                data.add((int) x, (int) y,
+                        field.getText().trim(),
+                        newPlaceCategory);
                 refreshMap(data.getPlaces());
             }
             return null;
@@ -234,8 +266,14 @@ public class Main extends Application {
 
         dialog.setResultConverter(buttonType -> {
             if (buttonType.equals(okType)) {
-                data.add((int) x, (int) y, field.getText().trim(), newPlaceCategory, dField.getText().trim());
+                System.out.println("Category " + newPlaceCategory);
+                data.add((int) x, (int) y,
+                        field.getText().trim(),
+                        dField.getText().trim(),
+                        newPlaceCategory);
                 refreshMap(data.getPlaces());
+                System.out.println("-------------All Places--------------");
+                data.printPlaces();
             }
             return null;
         });
@@ -246,6 +284,63 @@ public class Main extends Application {
         dialog.show();
     }
 
+    private void loadMap() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Choose a Map");
+        File file = chooser.showOpenDialog(primaryStage);
+        try {
+            FileInputStream inputStream = new FileInputStream(file);
+            imageView.setImage(new Image(inputStream));
+            data.clear();
+            refreshMap(data.getPlaces());
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+    }
+
+    private void showLoadMapDialog() {
+        if (data.isChanged()) {
+            // Warn the user about unsaved changes
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setContentText("There are unsaved changes!");
+            ButtonType loadType = new ButtonType("Load Map Anyway", ButtonBar.ButtonData.OK_DONE);
+            ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            dialog.setResultConverter(buttonType -> {
+                if (buttonType.equals(loadType)) {
+                    // Load map anyway
+                    loadMap();
+                }
+                return null;
+            });
+            dialog.getDialogPane().getButtonTypes().addAll(loadType, cancelType);
+            dialog.show();
+        } else {
+            loadMap();
+        }
+    }
+
+    private void showLoadPlacesDialog() {
+        if (data.isChanged()) {
+            // Warn the user about unsaved changes
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setContentText("There are unsaved changes!");
+            ButtonType loadType = new ButtonType("Load New Places Anyway", ButtonBar.ButtonData.OK_DONE);
+            ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            dialog.setResultConverter(buttonType -> {
+                if (buttonType.equals(loadType)) {
+                    // Load map anyway
+                    loadPlaces();
+                }
+                return null;
+            });
+            dialog.getDialogPane().getButtonTypes().addAll(loadType, cancelType);
+            dialog.show();
+        } else {
+            loadPlaces();
+        }
+
+    }
+
     private MenuBar menuBar() {
         MenuBar menuBar = new MenuBar();
         Menu fileMenu = new Menu("File");
@@ -254,40 +349,83 @@ public class Main extends Application {
         MenuItem save = new MenuItem("Save");
         MenuItem exit = new MenuItem("Exit");
 
-        loadMap.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Choose a Map");
-            File file = chooser.showOpenDialog(primaryStage);
-            try {
-                FileInputStream inputStream = new FileInputStream(file);
-                imageView.setImage(new Image(inputStream));
-                data.clear();
-                refreshMap(data.getPlaces());
-            } catch (IOException e1) {
-                e1.printStackTrace();
+        loadMap.setOnAction(e -> showLoadMapDialog());
+        loadPlaces.setOnAction(e -> showLoadPlacesDialog());
+        exit.setOnAction(e -> {
+            if (data.isChanged()) {
+                // Warn the user about unsaved changes
+                Dialog<String> dialog = new Dialog<>();
+                dialog.setContentText("There are unsaved changes!");
+                ButtonType exitType = new ButtonType("Exit", ButtonBar.ButtonData.OK_DONE);
+                ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+                dialog.setResultConverter(buttonType -> {
+                    if (buttonType.equals(exitType)) {
+                        // Load map anyway
+                        System.exit(0);
+                    }
+                    return null;
+                });
+                dialog.getDialogPane().getButtonTypes().addAll(exitType, cancelType);
+                dialog.show();
+            } else {
+                System.exit(0);
             }
         });
-
-        loadPlaces.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Choose Places File");
-            File file = chooser.showOpenDialog(primaryStage);
-            loadPlaces(file);
-            System.out.println("-------------All Places--------------");
-            data.printPlaces();
-            System.out.println("-------------Marked---------------");
-            data.printMarked();
-
-        });
+        save.setOnAction(e -> savePlaces());
 
         fileMenu.getItems().addAll(loadMap, loadPlaces, save, exit);
         menuBar.getMenus().add(fileMenu);
         return menuBar;
     }
 
-    private void loadPlaces(File file) {
-        data.clear();
+    private void savePlaces() {
+        if (data.getPlaces().isEmpty() || !data.isChanged()) {
+            // Save nothing
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setContentText("There are no unsaved changes...");
+            alert.show();
+        } else {
+            FileChooser fileChooser = new FileChooser();
+            FileChooser.ExtensionFilter extensionFilter = new FileChooser.ExtensionFilter("(*.places)", "*.places");
+            fileChooser.getExtensionFilters().add(extensionFilter);
+            File file = fileChooser.showSaveDialog(primaryStage);
+            try {
+                PrintWriter writer = new PrintWriter(file);
+                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
+                    // Type,category,x,y,name,[description]
+                    Place place = entry.getValue();
+                    Position position = entry.getKey();
 
+                    String type = "Named";
+                    String category = place.getCategory().getName();
+                    String x = String.valueOf(position.x);
+                    String y = String.valueOf(position.y);
+                    String name = place.getName();
+                    if (place.getClass().equals(DescribedPlace.class)) {
+                        type = "Described";
+                        String description = ((DescribedPlace) place).getDescription();
+                        writer.append(type).append(",").append(category).append(",")
+                                .append(x).append(",").append(y).append(",")
+                                .append(name).append(",").append(description).append("\n");
+                    } else {
+                        writer.append(type).append(",").append(category).append(",")
+                                .append(x).append(",").append(y).append(",")
+                                .append(name).append("\n");
+                    }
+                }
+                writer.close();
+                data.setChanged(false);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void loadPlaces() {
+        data.clear();
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Choose Places File");
+        File file = chooser.showOpenDialog(primaryStage);
         try {
             Scanner scanner = new Scanner(file);
             while (scanner.hasNext()) {
@@ -307,6 +445,10 @@ public class Main extends Application {
                     data.add(x, y, name, categoryName);
                 }
             }
+            System.out.println("-------------All Places--------------");
+            data.printPlaces();
+            System.out.println("-------------Marked---------------");
+            data.printMarked();
             refreshMap(data.getPlaces());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -330,13 +472,6 @@ public class Main extends Application {
         HBox bottomContainer = new HBox();
         mapPane = new StackPane();
         imageView = new ImageView();
-
-        try {
-            InputStream inputStream = new FileInputStream("C:/AwesomeMaps/exempelkarta.png");
-            imageView.setImage(new Image(inputStream));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
 
         mapPane.setOnMouseClicked(defaultMapListener);
 

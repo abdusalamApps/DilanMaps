@@ -8,7 +8,7 @@ public class Category {
     protected Color color;
 
     public Category() {
-        this.name = "Blank";
+        this.name = "None";
         this.color = Color.BLACK;
     }
 
@@ -27,4 +27,6 @@ public class Category {
     public void setColor(Color color) {
         this.color = color;
     }
+
+
 }
