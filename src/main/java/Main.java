@@ -1,11 +1,14 @@
 import javafx.application.Application;
 import javafx.collections.FXCollections;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
@@ -25,19 +28,30 @@ public class Main extends Application {
     private Stage primaryStage;
     private Data data;
     private ImageView imageView;
-    StackPane mapPane;
+    private StackPane mapPane;
+    private Scene scene;
+    private ToggleGroup toggleGroup;
+    private ListView<String> categoriesListView;
+    private String newPlaceCategory;
+    private DefaultMapListener defaultMapListener;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
         this.primaryStage = primaryStage;
         this.data = new Data();
-
+        toggleGroup = new ToggleGroup();
+        categoriesListView = new ListView<>();
         VBox mainContainer = new VBox();
         mapPane = new StackPane();
+        newPlaceCategory = "";
+        defaultMapListener = new DefaultMapListener(data, this);
+
+        categoriesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
+            newPlaceCategory = newV;
+        });
 
         mainContainer.getChildren().addAll(menuBar(), topContainer(), bottomContainer());
-
-        Scene scene = new Scene(mainContainer, 1100, 800);
+        scene = new Scene(mainContainer, 1100, 800);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -129,10 +143,107 @@ public class Main extends Application {
             dialog.show();
         });
 
+        newButton.setOnAction(e -> {
+            saveNewPlace();
+        });
+
         topContainer.getChildren().addAll(newButton, radioBox(), textField,
                 searchButton, removeButton, hideButton, coordinatesButton);
 
         return topContainer;
+    }
+
+    private void saveNewPlace() {
+        scene.setCursor(Cursor.CROSSHAIR);
+        mapPane.setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                double clickedX = e.getX();
+                double clickedY = e.getY();
+                boolean placeExist = false;
+                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
+                    int x = entry.getKey().x;
+                    int y = entry.getKey().y;
+                    if (Math.abs(clickedX - x) < 7 && Math.abs(e.getY() - y) < 7) {
+                        Alert alert = new Alert(Alert.AlertType.WARNING);
+                        alert.setContentText("det är endast tillåtet med en plats per position");
+                        alert.show();
+                        placeExist = true;
+                        break;
+                    }
+                }
+                if (!placeExist) {
+                    RadioButton radioButton = (RadioButton) toggleGroup.getSelectedToggle();
+                    if (radioButton.getText().equalsIgnoreCase("named")) {
+                        // Save a new Named Place
+                        saveNamedPlace(clickedX, clickedY);
+                        scene.setCursor(Cursor.DEFAULT);
+                        mapPane.setOnMouseClicked(defaultMapListener);
+                    } else if (radioButton.getText().equalsIgnoreCase("described")) {
+                        // Save a new DescribedPlace
+                        saveDescribedPlace(clickedX, clickedY);
+                        scene.setCursor(Cursor.DEFAULT);
+                        mapPane.setOnMouseClicked(defaultMapListener);
+                    }
+                }
+            }
+        });
+    }
+
+    private void saveNamedPlace(double x, double y) {
+        /*
+        1. Show a dialog
+        2. Save place when clicking save
+         */
+        Dialog<String> dialog = new Dialog<>();
+        VBox vBox = new VBox();
+        vBox.setSpacing(5);
+        Label label = new Label("Name");
+        TextField field = new TextField();
+        vBox.getChildren().addAll(label, field);
+
+        ButtonType okType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType.equals(okType)) {
+                data.add((int) x, (int) y, field.getText().trim(), newPlaceCategory);
+                refreshMap(data.getPlaces());
+            }
+            return null;
+        });
+
+
+        dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
+        dialog.getDialogPane().setContent(vBox);
+        dialog.show();
+    }
+
+    private void saveDescribedPlace(double x, double y) {
+        Dialog<String> dialog = new Dialog<>();
+        VBox vBox = new VBox();
+        vBox.setSpacing(5);
+        Label label = new Label("Name ");
+        TextField field = new TextField();
+        Label dLabel = new Label("Description");
+        TextField dField = new TextField();
+
+        vBox.getChildren().addAll(label, field, dLabel, dField);
+
+        ButtonType okType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType.equals(okType)) {
+                data.add((int) x, (int) y, field.getText().trim(), newPlaceCategory, dField.getText().trim());
+                refreshMap(data.getPlaces());
+            }
+            return null;
+        });
+
+
+        dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
+        dialog.getDialogPane().setContent(vBox);
+        dialog.show();
     }
 
     private MenuBar menuBar() {
@@ -206,7 +317,7 @@ public class Main extends Application {
         VBox radioBox = new VBox();
         radioBox.getChildren().addAll(namedRadio, described);
         radioBox.setSpacing(6);
-        ToggleGroup toggleGroup = new ToggleGroup(); // Lägg radio buttons i den här
+
         namedRadio.setToggleGroup(toggleGroup);
         described.setToggleGroup(toggleGroup);
 
@@ -225,42 +336,7 @@ public class Main extends Application {
             e.printStackTrace();
         }
 
-        mapPane.setOnMouseClicked(e -> {
-            if (e.getButton() == MouseButton.PRIMARY) {
-                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
-                    int x = entry.getKey().x;
-                    int y = entry.getKey().y;
-                    if (Math.abs(x - e.getX()) < 7 && Math.abs(y - e.getY()) < 7) {
-                        if (data.isMarked(x, y)) {
-                            data.unMark(x, y);
-                        } else {
-                            data.mark(x, y);
-                        }
-                        refreshMap(data.getPlaces());
-                    }
-                }
-            } else if (e.getButton() == MouseButton.SECONDARY) {
-                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
-                    int x = entry.getKey().x;
-                    int y = entry.getKey().y;
-                    if (Math.abs(x - e.getX()) < 7 && Math.abs(y - e.getY()) < 7) {
-                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                        Place place = entry.getValue();
-                        if (place.getClass().equals(DescribedPlace.class)) {
-                            DescribedPlace describedPlace = (DescribedPlace) place;
-                            alert.setContentText("Name: " + place.getName()
-                                    + " [" + x + ", " + y + "]\n" +
-                                    "Description: " + describedPlace.getDescription());
-                        } else {
-                            alert.setContentText("Name: " + place.getName()
-                                    + " [" + x + ", " + y + "]");
-                        }
-                        alert.show();
-                    }
-                }
-
-            }
-        });
+        mapPane.setOnMouseClicked(defaultMapListener);
 
         mapPane.getChildren().addAll(imageView);
         refreshMap(data.getPlaces());
@@ -268,8 +344,7 @@ public class Main extends Application {
         return bottomContainer;
     }
 
-
-    private void refreshMap(Map<Position, Place> placeMap) {
+    public void refreshMap(Map<Position, Place> placeMap) {
         mapPane.getChildren().clear();
         mapPane.getChildren().add(imageView);
 
@@ -302,12 +377,10 @@ public class Main extends Application {
         }
     }
 
-
     private VBox rightPanel() {
         VBox rightPanel = new VBox();
         Label categoriesLabel = new Label("Categories");
 
-        ListView<String> categoriesListView = new ListView<>();
         List<String> categories = new ArrayList<>();
         categories.add("Train");
         categories.add("Bus");
