@@ -16,7 +16,7 @@ public class Data {
     private Map<Position, Place> places;
     private Map<Position, Place> marked;
     private Map<Position, Place> hidden;
-    boolean changed;
+    private boolean changed;
 
     public Data() {
         places = new HashMap<>();
@@ -27,11 +27,24 @@ public class Data {
 
     // Search after a place by its name
     public void search(String place) {
+        Map<Position, Place> found = found(place);
+        if (!found.isEmpty()) {
+            for (Map.Entry<Position, Place> entry : found.entrySet()) {
+                hidden.remove(entry.getKey());
+            }
+            marked.clear();
+            marked.putAll(found);
+        }
+    }
+
+    public Map<Position, Place> found(String place) {
+        Map<Position, Place> found = new HashMap<>();
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
             if (place.equalsIgnoreCase(entry.getValue().getName())) {
-                marked.put(entry.getKey(), entry.getValue());
+                found.put(entry.getKey(), entry.getValue());
             }
         }
+        return found;
     }
 
     // Hides all marked places
@@ -63,13 +76,16 @@ public class Data {
 
     // Removes all marked places
     public void remove() {
-        for (Map.Entry<Position, Place> entry : marked.entrySet()) {
-            places.entrySet().removeIf(
-                    e -> e.getKey().x == entry.getKey().x
-                    && e.getKey().y == entry.getKey().y
-            );
+        if (!places.isEmpty()) {
+            for (Map.Entry<Position, Place> entry : marked.entrySet()) {
+                places.entrySet().removeIf(
+                        e -> e.getKey().x == entry.getKey().x
+                                && e.getKey().y == entry.getKey().y
+                );
+            }
+            marked.clear();
+            changed = true;
         }
-        marked.clear();
     }
 
     // Looks for a place at the given coordinates
@@ -87,6 +103,7 @@ public class Data {
                 new Position(x, y),
                 new Place(name, makeCategory(categoryName))
         );
+        changed = true;
     }
 
     public void add(int x, int y, String name, String description, String categoryName) {
@@ -94,6 +111,7 @@ public class Data {
                 new Position(x, y),
                 new DescribedPlace(name, makeCategory(categoryName), description)
         );
+        changed = true;
     }
 
     private Category makeCategory(String categoryName) {
@@ -111,11 +129,26 @@ public class Data {
     }
 
     public void mark(int x, int y) {
+        Map<Position, Place> found = found(x, y);
+        if (!found.isEmpty()) {
+            hidden.remove(new Position(x, y));
+            marked.clear();
+            marked.putAll(found);
+        }
+    }
+
+    private Map<Position, Place> found(int x, int y) {
+        Map<Position, Place> found = new HashMap<>();
         for (Map.Entry<Position, Place> entry : places.entrySet()) {
             if (entry.getKey().x == x && entry.getKey().y == y) {
-                marked.put(entry.getKey(), entry.getValue());
+                found.put(entry.getKey(), entry.getValue());
             }
         }
+        return found;
+    }
+
+    public void unMark(int x, int y) {
+        marked.remove(new Position(x, y));
     }
 
     public boolean isMarked(int x, int y) {
@@ -195,7 +228,4 @@ public class Data {
         this.changed = changed;
     }
 
-    public void unMark(int x, int y) {
-        marked.remove(new Position(x, y));
-    }
 }
