@@ -261,6 +261,8 @@ public class Main extends Application {
             try {
                 FileInputStream inputStream = new FileInputStream(file);
                 imageView.setImage(new Image(inputStream));
+                data.clear();
+                refreshMap(data.getPlaces());
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
