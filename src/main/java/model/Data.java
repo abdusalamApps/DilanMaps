@@ -5,7 +5,7 @@ import model.categories.Category;
 import model.categories.TrainCategory;
 import model.categories.UndergroundCategory;
 import model.places.DescribedPlace;
-import model.places.Place;
+import model.places.NamedPlace;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,105 +13,123 @@ import java.util.Map;
 import java.util.Set;
 
 public class Data {
-    private Map<Position, Place> places;
-    private Map<Position, Place> marked;
-    private Map<Position, Place> hidden;
+    private Map<Position, NamedPlace> positionsPlaces;
+    private Map<String, Set<NamedPlace>> namesPlaces;
+    private Map<String, Set<NamedPlace>> categoriesPlaces;
+    private Set<NamedPlace> marked;
+    private Set<NamedPlace> hidden;
     private boolean changed;
 
+    private NamedPlace lastAddedPlace;
+
     public Data() {
-        places = new HashMap<>();
-        marked = new HashMap<>();
-        hidden = new HashMap<>();
+        positionsPlaces = new HashMap<>();
+        namesPlaces = new HashMap<>();
+        categoriesPlaces = new HashMap<>();
+        marked = new HashSet<>();
+        hidden = new HashSet<>();
         changed = false;
     }
 
     // Search after a place by its name
-    public void search(String place) {
-        Map<Position, Place> found = found(place);
-        if (!found.isEmpty()) {
-            for (Map.Entry<Position, Place> entry : found.entrySet()) {
-                hidden.remove(entry.getKey());
-            }
+    public Set<NamedPlace> search(String place) {
+        if (namesPlaces.containsKey(place)) {
             marked.clear();
-            marked.putAll(found);
-        }
-    }
-
-    public Map<Position, Place> found(String place) {
-        Map<Position, Place> found = new HashMap<>();
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (place.equalsIgnoreCase(entry.getValue().getName())) {
-                found.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return found;
-    }
-
-    // Hides all marked places
-    public void hide() {
-        for (Map.Entry<Position, Place> entry : marked.entrySet()) {
-            hidden.put(entry.getKey(), entry.getValue());
-        }
-        marked.clear();
-    }
-
-    // Hide all places of a certain category
-    public void hideCategory(String category) {
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (category.equalsIgnoreCase(entry.getValue().getCategory().getName())) {
-                hidden.put(entry.getKey(), entry.getValue());
-                marked.remove(entry.getKey());
-            }
-        }
-    }
-
-    // Show hidden category
-    public void showCategory(String category) {
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (category.equalsIgnoreCase(entry.getValue().getCategory().getName())) {
-                hidden.remove(entry.getKey());
-            }
-        }
-    }
-
-    // Removes all marked places
-    public void remove() {
-        if (!places.isEmpty()) {
-            for (Map.Entry<Position, Place> entry : marked.entrySet()) {
-                places.entrySet().removeIf(
-                        e -> e.getKey().x == entry.getKey().x
-                                && e.getKey().y == entry.getKey().y
-                );
-            }
-            marked.clear();
-            changed = true;
-        }
-    }
-
-    // Looks for a place at the given coordinates
-    public String placeByCoordinates(int x, int y) {
-        if (places.containsKey(new Position(x, y))) {
-            Place place = places.get(new Position(x, y));
-            marked.put(new Position(x, y), place);
-            return place.getName();
+            Set<NamedPlace> places = namesPlaces.get(place);
+            hidden.removeAll(places);
+            marked.addAll(places);
+            System.out.println("Marked size after search = " + marked.size());
+            return places;
         }
         return null;
     }
 
-    public void add(int x, int y, String name, String categoryName) {
-        places.put(
-                new Position(x, y),
-                new Place(name, makeCategory(categoryName))
-        );
-        changed = true;
+    // Hides all marked places
+    public Set<NamedPlace> hide() {
+        hidden.addAll(marked);
+        marked.clear();
+        return hidden;
     }
 
-    public void add(int x, int y, String name, String description, String categoryName) {
-        places.put(
-                new Position(x, y),
-                new DescribedPlace(name, makeCategory(categoryName), description)
-        );
-        changed = true;
+    // Hide all places of a certain category
+    public Set<NamedPlace> hideCategory(String category) {
+        if (categoriesPlaces.containsKey(category)) {
+            Set<NamedPlace> places = categoriesPlaces.get(category);
+            hidden.addAll(places);
+            marked.removeAll(places);
+            return places;
+        }
+        return null;
+    }
+
+    // Show hidden category
+    public Set<NamedPlace> showCategory(String category) {
+        if (categoriesPlaces.containsKey(category)) {
+            Set<NamedPlace> places = categoriesPlaces.get(category);
+            hidden.removeAll(places);
+            return places;
+        }
+        return null;
+    }
+
+    // Removes all marked places
+    public Set<NamedPlace> remove() {
+        Set<NamedPlace> temp = new HashSet<>(marked);
+        if (!marked.isEmpty()) {
+            for (NamedPlace place : marked) {
+                positionsPlaces.remove(place.getPosition());
+                namesPlaces.get(place.getName()).remove(place);
+                categoriesPlaces.get(place.getCategory().getName()).remove(place);
+            }
+            marked.clear();
+            changed = true;
+            return temp;
+        }
+        return null;
+    }
+
+    // Looks for a place at the given coordinates
+    public NamedPlace placeByCoordinates(int x, int y) {
+        if (positionsPlaces.containsKey(new Position(x, y))) {
+            marked.clear();
+            NamedPlace place = positionsPlaces.get(new Position(x, y));
+            marked.add(place);
+            System.out.println("-------PlaceByCoordinates-----------");
+            System.out.println("Marked size = " + marked.size());
+            return place;
+        }
+        return null;
+    }
+
+    public void add(boolean fromFile, String categoryName, int x, int y, String name, String description) {
+        NamedPlace newPlace;
+        Position position = new Position(x, y);
+        if (description.equals("")) {
+            newPlace = new NamedPlace(name, makeCategory(categoryName));
+        } else {
+            newPlace = new DescribedPlace(name, makeCategory(categoryName), description);
+        }
+        newPlace.setPosition(position);
+        positionsPlaces.put(position, newPlace);
+        if (namesPlaces.containsKey(name)) {
+            namesPlaces.get(name).add(newPlace);
+        } else {
+            HashSet<NamedPlace> places = new HashSet<>();
+            places.add(newPlace);
+            namesPlaces.put(name, places);
+        }
+        if (categoryName.equals("") || categoryName == null)
+            categoryName = "None";
+        if (categoriesPlaces.containsKey(categoryName)) {
+            categoriesPlaces.get(categoryName).add(newPlace);
+        } else {
+            HashSet<NamedPlace> places = new HashSet<>();
+            places.add(newPlace);
+            categoriesPlaces.put(categoryName, places);
+        }
+        lastAddedPlace = newPlace;
+        if (!fromFile)
+            changed = true;
     }
 
     private Category makeCategory(String categoryName) {
@@ -128,47 +146,26 @@ public class Data {
         }
     }
 
-    public void mark(int x, int y) {
-        Map<Position, Place> found = found(x, y);
-        if (!found.isEmpty()) {
-            hidden.remove(new Position(x, y));
-            marked.clear();
-            marked.putAll(found);
-        }
+    public void mark(NamedPlace place) {
+        marked.add(place);
     }
 
-    private Map<Position, Place> found(int x, int y) {
-        Map<Position, Place> found = new HashMap<>();
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
-            if (entry.getKey().x == x && entry.getKey().y == y) {
-                found.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return found;
+
+    public void unMark(NamedPlace place) {
+        marked.remove(place);
     }
 
-    public void unMark(int x, int y) {
-        marked.remove(new Position(x, y));
+    public boolean isMarked(NamedPlace place) {
+        return marked.contains(place);
     }
 
-    public boolean isMarked(int x, int y) {
-        return marked.containsKey(new Position(x, y));
-    }
 
-    public boolean isMarked(double x, double y) {
-        return marked.containsKey(new Position((int) x, (int) y));
-    }
-
-    public boolean isHidden(int x, int y) {
-        return hidden.containsKey(new Position(x, y));
-    }
-
-    public boolean isHidden(double x, double y) {
-        return hidden.containsKey(new Position((int) x, (int) y));
+    public boolean isHidden(NamedPlace place) {
+        return hidden.contains(place);
     }
 
     public void printPlaces() {
-        for (Map.Entry<Position, Place> entry : places.entrySet()) {
+        for (Map.Entry<Position, NamedPlace> entry : positionsPlaces.entrySet()) {
             System.out.println(
                     "Position " + entry.getKey().x + ", " + entry.getKey().y +
                             "|| Place " + entry.getValue().getName() + ", " + entry.getValue().getCategory().getName()
@@ -177,47 +174,33 @@ public class Data {
     }
 
     public void printMarked() {
-        for (Place place : marked.values()) {
+        for (NamedPlace place : marked) {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
     }
 
     public void printHidden() {
-        for (Place place : hidden.values()) {
+        for (NamedPlace place : hidden) {
             System.out.println("Name: " + place.getName() +
                     ", Category: " + place.getCategory().getName());
         }
     }
 
     public void clear() {
-        places.clear();
+        positionsPlaces.clear();
+        namesPlaces.clear();
+        categoriesPlaces.clear();
         marked.clear();
         hidden.clear();
     }
 
-    public Map<Position, Place> getPlaces() {
-        return places;
+    public Map<Position, NamedPlace> getPositionsPlaces() {
+        return positionsPlaces;
     }
 
-    public void setPlaces(Map<Position, Place> places) {
-        this.places = places;
-    }
-
-    public Map<Position, Place> getMarked() {
-        return marked;
-    }
-
-    public void setMarked(Map<Position, Place> marked) {
-        this.marked = marked;
-    }
-
-    public Map<Position, Place> getHidden() {
-        return hidden;
-    }
-
-    public void setHidden(Map<Position, Place> hidden) {
-        this.hidden = hidden;
+    public void setPositionsPlaces(Map<Position, NamedPlace> positionsPlaces) {
+        this.positionsPlaces = positionsPlaces;
     }
 
     public boolean isChanged() {
@@ -228,4 +211,11 @@ public class Data {
         this.changed = changed;
     }
 
+    public NamedPlace getLastAddedPlace() {
+        return this.lastAddedPlace;
+    }
+
+    public Set<NamedPlace> getMarked() {
+        return this.marked;
+    }
 }

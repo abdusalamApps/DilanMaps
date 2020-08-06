@@ -1,6 +1,5 @@
 import javafx.application.Application;
 import javafx.collections.FXCollections;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -8,17 +7,14 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Polyline;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import model.Data;
 import model.Position;
-import model.categories.Category;
 import model.places.DescribedPlace;
-import model.places.Place;
+import model.places.NamedPlace;
 
 import java.io.*;
 import java.util.*;
@@ -33,7 +29,7 @@ public class Main extends Application {
     private ToggleGroup toggleGroup;
     private ListView<String> categoriesListView;
     private String newPlaceCategory;
-    private DefaultMapListener defaultMapListener;
+    private String description = "";
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -44,7 +40,6 @@ public class Main extends Application {
         VBox mainContainer = new VBox();
         mapPane = new StackPane();
         newPlaceCategory = "";
-        defaultMapListener = new DefaultMapListener(data, this);
 
         categoriesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             newPlaceCategory = newV;
@@ -59,29 +54,29 @@ public class Main extends Application {
 
     private void exitingBehavior(Stage stage) {
         stage.setOnCloseRequest(event -> {
-           if (data.isChanged()) {
-               Dialog<String> dialog = new Dialog<>();
-               HBox hBox = new HBox();
-               Label messageLabel = new Label("There are Unsaved Changes!");
-               hBox.getChildren().addAll(messageLabel);
+            if (data.isChanged()) {
+                Dialog<String> dialog = new Dialog<>();
+                HBox hBox = new HBox();
+                Label messageLabel = new Label("There are Unsaved Changes!");
+                hBox.getChildren().addAll(messageLabel);
 
-               ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-               ButtonType exitType = new ButtonType("Exit", ButtonBar.ButtonData.OK_DONE);
-               dialog.setResultConverter(buttonType -> {
-                   if (buttonType.equals(exitType)) {
-                       System.exit(0);
-                   }
-                   return null;
-               });
+                ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+                ButtonType exitType = new ButtonType("Exit", ButtonBar.ButtonData.OK_DONE);
+                dialog.setResultConverter(buttonType -> {
+                    if (buttonType.equals(exitType)) {
+                        System.exit(0);
+                    }
+                    return null;
+                });
 
-               dialog.getDialogPane().getButtonTypes().addAll(cancelType, exitType);
-               dialog.getDialogPane().setContent(hBox);
-               dialog.show();
+                dialog.getDialogPane().getButtonTypes().addAll(cancelType, exitType);
+                dialog.getDialogPane().setContent(hBox);
+                dialog.show();
 
-               event.consume();
-           } else {
-               System.exit(0);
-           }
+                event.consume();
+            } else {
+                System.exit(0);
+            }
 
         });
     }
@@ -90,198 +85,139 @@ public class Main extends Application {
         HBox topContainer = new HBox();
         topContainer.setPadding(new Insets(14, 16, 14, 16));
         topContainer.setSpacing(12);
-
         Button newButton = new Button("New"); // Skapa 5 stycken
         Button searchButton = new Button("Search");
         Button removeButton = new Button("Remove");
         Button hideButton = new Button("Hide");
         Button coordinatesButton = new Button("Coordinates");
         TextField textField = new TextField();
-
-
         searchButton.setOnAction(e -> {
-            data.search(textField.getText().trim());
-            System.out.println("-------------Marked---------------");
-            data.printMarked();
-            refreshMap(data.getPlaces());
-        });
-
-        hideButton.setOnAction(e -> {
-            data.hide();
-            System.out.println("-------------Hidden--------------");
-            data.printHidden();
-            System.out.println("-------------Marked---------------");
-            data.printMarked();
-            refreshMap(data.getPlaces());
-        });
-
-        removeButton.setOnAction(e -> {
-            data.remove();
-            System.out.println("-------------All Places--------------");
-            data.printPlaces();
-            System.out.println("-------------Hidden--------------");
-            data.printHidden();
-            System.out.println("-------------Marked---------------");
-            data.printMarked();
-            refreshMap(data.getPlaces());
-
-        });
-
-        coordinatesButton.setOnAction(e -> {
-            Dialog<String> dialog = new Dialog<>();
-            dialog.setTitle("Input Coordinates");
-
-            VBox mainBox = new VBox();
-            mainBox.setSpacing(12);
-            HBox xBox = new HBox();
-            HBox yBox = new HBox();
-
-            Label xLabel = new Label("X     ");
-            TextField xField = new TextField();
-            xBox.getChildren().addAll(xLabel, xField);
-
-            Label yLabel = new Label("Y     ");
-            TextField yField = new TextField();
-            yBox.getChildren().addAll(yLabel, yField);
-
-            ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
-            ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-            dialog.setResultConverter(buttonType -> {
-                if (buttonType.equals(okType)) {
-                    int x = Integer.parseInt(xField.getText().trim());
-                    int y = Integer.parseInt(yField.getText().trim());
-                    String place = data.placeByCoordinates(x, y);
-                    if (place == null) {
-                        Alert alert = new Alert(Alert.AlertType.WARNING);
-                        alert.setContentText("Place Not Found!");
-                        alert.show();
-                    } else {
-                        // Mark the place
-                        data.mark(x, y);
-                        System.out.println("-------------Marked---------------");
-                        data.printMarked();
-                        refreshMap(data.getPlaces());
-                    }
+            Set<NamedPlace> prevMarked = new HashSet<>(data.getMarked());
+            Set<NamedPlace> found = data.search(textField.getText().trim());
+            if (found != null) {
+                for (NamedPlace p : prevMarked) {
+                    p.setFill(p.getCategory().getColor());
                 }
-                return null;
-            });
+                for (NamedPlace place : found) {
+                    place.setFill(Color.YELLOW);
+                    if (!mapPane.getChildren().contains(place)) {
+                        mapPane.getChildren().add(place);
+                    }
 
-            mainBox.getChildren().addAll(xBox, yBox);
-            dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
-            dialog.getDialogPane().setContent(mainBox);
-            dialog.show();
+                }
+            }
         });
-
-        newButton.setOnAction(e -> {
-            saveNewPlace();
+        hideButton.setOnAction(e -> {
+            Set<NamedPlace> hidden = data.hide();
+            if (hidden != null)
+                mapPane.getChildren().removeAll(hidden);
         });
-
+        removeButton.setOnAction(e -> {
+            Set<NamedPlace> removed = data.remove();
+            if (removed != null)
+                mapPane.getChildren().removeAll(removed);
+        });
+        coordinatesButton.setOnAction(e -> showCoordinatesDialog());
+        newButton.setOnAction(e -> saveNewPlace());
         topContainer.getChildren().addAll(newButton, radioBox(), textField,
                 searchButton, removeButton, hideButton, coordinatesButton);
-
         return topContainer;
+    }
+
+    private void showCoordinatesDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Input Coordinates");
+        VBox mainBox = new VBox();
+        mainBox.setSpacing(12);
+        HBox xBox = new HBox();
+        HBox yBox = new HBox();
+        Label xLabel = new Label("X     ");
+        TextField xField = new TextField();
+        xBox.getChildren().addAll(xLabel, xField);
+        Label yLabel = new Label("Y     ");
+        TextField yField = new TextField();
+        yBox.getChildren().addAll(yLabel, yField);
+        ButtonType okType = new ButtonType("OK", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType.equals(okType)) {
+                int x = Integer.parseInt(xField.getText().trim());
+                int y = Integer.parseInt(yField.getText().trim());
+                Set<NamedPlace> prevMarked = new HashSet<>(data.getMarked());
+                NamedPlace place = data.placeByCoordinates(x, y);
+                if (place == null) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setContentText("Place Not Found!");
+                    alert.show();
+                } else {
+                    for (NamedPlace p : prevMarked) {
+                        p.setFill(p.getCategory().getColor());
+                    }
+                    place.setFill(Color.YELLOW);
+                }
+            }
+            return null;
+        });
+        mainBox.getChildren().addAll(xBox, yBox);
+        dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
+        dialog.getDialogPane().setContent(mainBox);
+        dialog.show();
     }
 
     private void saveNewPlace() {
         scene.setCursor(Cursor.CROSSHAIR);
         mapPane.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
-                double clickedX = e.getX();
-                double clickedY = e.getY();
-                boolean placeExist = false;
-                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
-                    int x = entry.getKey().x;
-                    int y = entry.getKey().y;
-                    if (Math.abs(clickedX - x) < 7 && Math.abs(e.getY() - y) < 7) {
-                        Alert alert = new Alert(Alert.AlertType.WARNING);
-                        alert.setContentText("det är endast tillåtet med en plats per position");
-                        alert.show();
-                        placeExist = true;
-                        break;
-                    }
-                }
-                if (!placeExist) {
+                int clickedX = (int) e.getX();
+                int clickedY = (int) e.getY();
+                if (data.placeByCoordinates(clickedX, clickedY) != null) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setContentText("Det är endast tillåtet med en plats per position!");
+                    alert.show();
+                } else {
                     RadioButton radioButton = (RadioButton) toggleGroup.getSelectedToggle();
-                    if (radioButton.getText().equalsIgnoreCase("named")) {
-                        // Save a new Named Place
-                        saveNamedPlace(clickedX, clickedY);
-                        scene.setCursor(Cursor.DEFAULT);
-                        mapPane.setOnMouseClicked(defaultMapListener);
-                    } else if (radioButton.getText().equalsIgnoreCase("described")) {
-                        // Save a new DescribedPlace
-                        saveDescribedPlace(clickedX, clickedY);
-                        scene.setCursor(Cursor.DEFAULT);
-                        mapPane.setOnMouseClicked(defaultMapListener);
+                    Dialog<NamedPlace> dialog = new Dialog<>();
+                    dialog.setTitle("Create New Place");
+                    dialog.setResizable(true);
+                    Label nameLabel = new Label("Name");
+                    TextField nameField = new TextField();
+                    VBox vBox = new VBox();
+                    vBox.setSpacing(5);
+                    vBox.getChildren().addAll(nameLabel, nameField);
+
+                    Label descriptionLabel = new Label("Description");
+                    TextField descriptionField = new TextField();
+
+                    if (radioButton.getText().equalsIgnoreCase("described")) {
+                        description = descriptionField.getText().trim();
+                        vBox.getChildren().addAll(descriptionLabel, descriptionField);
                     }
+
+                    ButtonType save = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+                    ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+                    dialog.setResultConverter(button -> {
+                        if (button.equals(save)) {
+                            description = descriptionField.getText().trim();
+                            String name = nameField.getText().trim();
+                            data.add(false, newPlaceCategory, clickedX, clickedY, name, description);
+                            NamedPlace newPlace = data.getLastAddedPlace();
+                            newPlace.draw(newPlace.getCategory().getColor());
+                            newPlace.setOnMouseClicked(new PlaceClickListener(data, newPlace));
+                            mapPane.getChildren().add(newPlace);
+                            mapPane.setOnMouseClicked(null);
+                            scene.setCursor(Cursor.DEFAULT);
+                        }
+                        return null;
+                    });
+
+                    dialog.getDialogPane().setContent(vBox);
+                    dialog.getDialogPane().getButtonTypes().addAll(save, cancel);
+                    dialog.show();
+
                 }
             }
         });
-    }
-
-    private void saveNamedPlace(double x, double y) {
-        /*
-        1. Show a dialog
-        2. Save place when clicking save
-         */
-        Dialog<String> dialog = new Dialog<>();
-        VBox vBox = new VBox();
-        vBox.setSpacing(5);
-        Label label = new Label("Name");
-        TextField field = new TextField();
-        vBox.getChildren().addAll(label, field);
-
-        ButtonType okType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType.equals(okType)) {
-                data.add((int) x, (int) y,
-                        field.getText().trim(),
-                        newPlaceCategory);
-                refreshMap(data.getPlaces());
-            }
-            return null;
-        });
-
-
-        dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
-        dialog.getDialogPane().setContent(vBox);
-        dialog.show();
-    }
-
-    private void saveDescribedPlace(double x, double y) {
-        Dialog<String> dialog = new Dialog<>();
-        VBox vBox = new VBox();
-        vBox.setSpacing(5);
-        Label label = new Label("Name ");
-        TextField field = new TextField();
-        Label dLabel = new Label("Description");
-        TextField dField = new TextField();
-
-        vBox.getChildren().addAll(label, field, dLabel, dField);
-
-        ButtonType okType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType.equals(okType)) {
-                System.out.println("Category " + newPlaceCategory);
-                data.add((int) x, (int) y,
-                        field.getText().trim(),
-                        dField.getText().trim(),
-                        newPlaceCategory);
-                refreshMap(data.getPlaces());
-                System.out.println("-------------All Places--------------");
-                data.printPlaces();
-            }
-            return null;
-        });
-
-
-        dialog.getDialogPane().getButtonTypes().addAll(okType, cancelType);
-        dialog.getDialogPane().setContent(vBox);
-        dialog.show();
     }
 
     private void loadMap() {
@@ -291,8 +227,8 @@ public class Main extends Application {
         try {
             FileInputStream inputStream = new FileInputStream(file);
             imageView.setImage(new Image(inputStream));
+            mapPane.getChildren().removeAll(data.getPositionsPlaces().values());
             data.clear();
-            refreshMap(data.getPlaces());
         } catch (IOException e1) {
             e1.printStackTrace();
         }
@@ -371,15 +307,15 @@ public class Main extends Application {
                 System.exit(0);
             }
         });
-        save.setOnAction(e -> savePlaces());
+        save.setOnAction(e -> savePlacesToFile());
 
         fileMenu.getItems().addAll(loadMap, loadPlaces, save, exit);
         menuBar.getMenus().add(fileMenu);
         return menuBar;
     }
 
-    private void savePlaces() {
-        if (data.getPlaces().isEmpty() || !data.isChanged()) {
+    private void savePlacesToFile() {
+        if (data.getPositionsPlaces().isEmpty() || !data.isChanged()) {
             // Save nothing
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setContentText("There are no unsaved changes...");
@@ -391,9 +327,9 @@ public class Main extends Application {
             File file = fileChooser.showSaveDialog(primaryStage);
             try {
                 PrintWriter writer = new PrintWriter(file);
-                for (Map.Entry<Position, Place> entry : data.getPlaces().entrySet()) {
+                for (Map.Entry<Position, NamedPlace> entry : data.getPositionsPlaces().entrySet()) {
                     // Type,category,x,y,name,[description]
-                    Place place = entry.getValue();
+                    NamedPlace place = entry.getValue();
                     Position position = entry.getKey();
 
                     String type = "Named";
@@ -422,6 +358,7 @@ public class Main extends Application {
     }
 
     private void loadPlaces() {
+        mapPane.getChildren().removeAll(data.getPositionsPlaces().values());
         data.clear();
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Choose Places File");
@@ -429,27 +366,19 @@ public class Main extends Application {
         try {
             Scanner scanner = new Scanner(file);
             while (scanner.hasNext()) {
-                String line = scanner.nextLine();
-                String[] array = line.split(",");
-                String type = array[0];
-                String categoryName = array[1];
-                int x = Integer.parseInt(array[2]);
-                int y = Integer.parseInt(array[3]);
-                String name = array[4];
+                String[] line = scanner.nextLine().split(",");
+                String type = line[0];
+                String categoryName = line[1];
+                int x = Integer.parseInt(line[2]);
+                int y = Integer.parseInt(line[3]);
+                String name = line[4];
+                String description = "";
                 if (type.equalsIgnoreCase("described")) {
-                    String description = array[5];
-                    // Add Described place
-                    data.add(x, y, name, description, categoryName);
-                } else {
-                    // Add a named place
-                    data.add(x, y, name, categoryName);
+                    description = line[5];
                 }
+                data.add(true, categoryName, x, y, name, description);
             }
-            System.out.println("-------------All Places--------------");
-            data.printPlaces();
-            System.out.println("-------------Marked---------------");
-            data.printMarked();
-            refreshMap(data.getPlaces());
+            refreshMap();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
@@ -472,45 +401,23 @@ public class Main extends Application {
         HBox bottomContainer = new HBox();
         mapPane = new StackPane();
         imageView = new ImageView();
-
-        mapPane.setOnMouseClicked(defaultMapListener);
-
         mapPane.getChildren().addAll(imageView);
-        refreshMap(data.getPlaces());
         bottomContainer.getChildren().addAll(mapPane, rightPanel());
         return bottomContainer;
     }
 
-    public void refreshMap(Map<Position, Place> placeMap) {
+    public void refreshMap() {
         mapPane.getChildren().clear();
         mapPane.getChildren().add(imageView);
-
-        for (Map.Entry<Position, Place> entry : placeMap.entrySet()) {
-            double x = entry.getKey().x;
-            double y = entry.getKey().y;
-
-            Polyline polyline = new Polyline();
-            polyline.setManaged(false);
-
-            polyline.getPoints().addAll(
-                    x - 10, y - 10,
-                    x + 10, y - 10,
-                    x, y,
-                    x - 10, y - 10
-            );
-
-            Category category = entry.getValue().getCategory();
-
-            if (data.isMarked(x, y)) {
-                polyline.setFill(Color.YELLOW);
-            } else {
-                polyline.setFill(category.getColor());
+        for (Map.Entry<Position, NamedPlace> entry : data.getPositionsPlaces().entrySet()) {
+            NamedPlace place = entry.getValue();
+            Color color = place.getCategory().getColor();
+            if (data.isMarked(place)) {
+                color = Color.YELLOW;
             }
-
-            if (!data.isHidden(x, y)) {
-                mapPane.getChildren().add(polyline);
-            }
-
+            place.draw(color);
+            place.setOnMouseClicked(new PlaceClickListener(data, place));
+            mapPane.getChildren().add(place);
         }
     }
 
@@ -529,13 +436,18 @@ public class Main extends Application {
         rightPanel.setPadding(new Insets(14, 16, 14, 16));
 
         categoriesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            data.showCategory(obs.getValue());
-            refreshMap(data.getPlaces());
+            Set<NamedPlace> places = data.showCategory(obs.getValue());
+            if (places != null) {
+                if (!mapPane.getChildren().containsAll(places))
+                    mapPane.getChildren().addAll(places);
+            }
         });
 
         hideCatButton.setOnAction(e -> {
-            data.hideCategory(categoriesListView.getSelectionModel().getSelectedItem());
-            refreshMap(data.getPlaces());
+            Set<NamedPlace> places = data.hideCategory(categoriesListView.getSelectionModel().getSelectedItem());
+            if (places != null) {
+                mapPane.getChildren().removeAll(places);
+            }
         });
         rightPanel.getChildren().addAll(categoriesLabel, categoriesListView, hideCatButton);
 

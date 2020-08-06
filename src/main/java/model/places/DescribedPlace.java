@@ -1,9 +1,8 @@
 package model.places;
 
 import model.categories.Category;
-import model.places.Place;
 
-public class DescribedPlace extends Place {
+public class DescribedPlace extends NamedPlace {
 
     private String description;
 
